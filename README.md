@@ -1,3 +1,3 @@
 # aprioh
 
-small script to manage on-hands
+'small' script to manage on-hands
