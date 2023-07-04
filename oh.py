@@ -106,6 +106,20 @@ def parse_ball(s):
         return Ball(matching_balls[0])
 
 
+# --- Interlude: a custom exception ------------------------------------------
+class NegativeQuantityError(Exception):
+    def __init__(self, game: Game, i: int, j: int):
+        self.game = game
+        self.i = i
+        self.j = j
+
+    def __str__(self):
+        return (f'Subtraction would result in negative quantity for game'
+                f' <{self.game.value}> (original had {self.i};'
+                f' trying to subtract {self.j}).')
+
+
+# --- Data structures, continued ---------------------------------------------
 class Quantity:
     """
     Represents the quantity of a given Aprimon combination, split by game /
@@ -141,7 +155,7 @@ class Quantity:
         for game in Game:
             new_qty[game] = self.qty[game] - other.qty[game]
             if new_qty[game] < 0:
-                raise ValueError(f'Cannot subtract {other} from {self}')
+                raise NegativeQuantityError(game, self.qty[game], other.qty[game])
         return Quantity(new_qty)
 
 
@@ -292,7 +306,14 @@ class Spreadsheet:
         new_entries = {}
         for apri in all_apris:
             if apri in self.entries and apri in other.entries:
-                new_entries[apri] = self.entries[apri] - other.entries[apri]
+                try:
+                    new_entries[apri] = self.entries[apri] - other.entries[apri]
+                except NegativeQuantityError as e:
+                    raise ValueError(f'Cannot subtract spreadsheets: entry {apri}'
+                                     f' would have negative quantity in game'
+                                     f' <{e.game.value}> (original quantity'
+                                     f' was {e.i}; trying to subtract'
+                                     f' {e.j}).') from None
             elif apri in self.entries:
                 new_entries[apri] = self.entries[apri]
             else:
@@ -301,4 +322,7 @@ class Spreadsheet:
         return Spreadsheet(new_entries)
 
 
-Spreadsheet.from_sheet().pretty_print()
+s = Spreadsheet.from_sheet()
+s.pretty_print()
+
+s - Spreadsheet.from_lines(['swsh2 beast charmander 1'])
