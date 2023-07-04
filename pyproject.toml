@@ -1,0 +1,7 @@
+[project]
+name = "onhands"
+version = "0.0.1"
+authors = [
+    {name = "Penelope Yong", email = "penelopeysm@gmail.com"}
+]
+dependencies = ["gspread"]

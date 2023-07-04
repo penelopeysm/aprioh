@@ -1,23 +1,21 @@
 import gspread
+from gspread.utils import ValueInputOption
 
 from enum import Enum
 from typing import Optional
 
 
 # --- Global variables / config ----------------------------------------------
-SPREADSHEET_ID = '1IR6rCNQYFccBrc_cxNVv2gEQnVpecEAo58IDRJYWNlo'
-TAB_NAME = 'On-hands'
-
+SPREADSHEET_ID = "1IR6rCNQYFccBrc_cxNVv2gEQnVpecEAo58IDRJYWNlo"
+TAB_NAME = "Copy of On-hands"
 N_HEADER_ROWS = 3
-
-BALL_COL = 0    # 0 = 'A'
+BALL_COL = 0  # 0 = 'A'
 SPECIES_COL = 1
 SWSH1_COL = 9
 SWSH2_COL = 10
 SV1_COL = 11
 SV2_COL = 12
 BDSP_COL = 13
-
 LAST_COL = BDSP_COL  # Last column of interest.
 
 
@@ -30,7 +28,7 @@ ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
 
 # --- String manipulation functions --------------------------------------------
 def capitalise_first(s):
-    if s == 'o':
+    if s == "o":
         # Don't capitalise 'o' in Jangmo-o.
         return s
     else:
@@ -44,49 +42,51 @@ def canonicalise(species_name):
       'indeedee-f' -> 'Indeedee-F'
       'jangmo-o'   -> 'Jangmo-o'
     """
-    words = species_name.lower().split('-')
-    return '-'.join([capitalise_first(w) for w in words])
+    words = species_name.lower().split("-")
+    return "-".join([capitalise_first(w) for w in words])
 
 
 # --- Data structures --------------------------------------------------------
 class Game(Enum):
     """The games / profiles that I use to store on-hands."""
-    SWSH1 = 'SwSh 4+IV'
-    SWSH2 = 'SwSh 3IV'
-    SV1 = 'SV 4+IV'
-    SV2 = 'SV 3IV'
-    BDSP = 'BDSP'
+
+    SWSH1 = "SwSh 4+IV"
+    SWSH2 = "SwSh 3IV"
+    SV1 = "SV 4+IV"
+    SV2 = "SV 3IV"
+    BDSP = "BDSP"
 
 
 def parse_game(s):
     s2 = s.lower()
-    if s2 == 'swsh1':
+    if s2 == "swsh1":
         return Game.SWSH1
-    elif s2 == 'swsh2':
+    elif s2 == "swsh2":
         return Game.SWSH2
-    elif s2 == 'sv1':
+    elif s2 == "sv1":
         return Game.SV1
-    elif s2 == 'sv2':
+    elif s2 == "sv2":
         return Game.SV2
-    elif s2 == 'bdsp':
+    elif s2 == "bdsp":
         return Game.BDSP
     else:
-        raise ValueError(f'Could not parse game: <{s}>')
+        raise ValueError(f"Could not parse game: <{s}>")
 
 
 class Ball(Enum):
     """The special balls that we care about."""
-    BEAST = 'Beast'
-    DREAM = 'Dream'
-    FAST = 'Fast'
-    FRIEND = 'Friend'
-    HEAVY = 'Heavy'
-    LEVEL = 'Level'
-    LOVE = 'Love'
-    LURE = 'Lure'
-    MOON = 'Moon'
-    SAFARI = 'Safari'
-    SPORT = 'Sport'
+
+    BEAST = "Beast"
+    DREAM = "Dream"
+    FAST = "Fast"
+    FRIEND = "Friend"
+    HEAVY = "Heavy"
+    LEVEL = "Level"
+    LOVE = "Love"
+    LURE = "Lure"
+    MOON = "Moon"
+    SAFARI = "Safari"
+    SPORT = "Sport"
 
 
 def parse_ball(s):
@@ -101,7 +101,7 @@ def parse_ball(s):
     all_ball_values = [b.value for b in Ball]
     matching_balls = [b for b in all_ball_values if b.lower().startswith(s.lower())]
     if len(matching_balls) != 1:
-        raise ValueError(f'Could not parse ball: <{s}>')
+        raise ValueError(f"Could not parse ball: <{s}>")
     else:
         return Ball(matching_balls[0])
 
@@ -114,9 +114,11 @@ class NegativeQuantityError(Exception):
         self.j = j
 
     def __str__(self):
-        return (f'Subtraction would result in negative quantity for game'
-                f' <{self.game.value}> (original had {self.i};'
-                f' trying to subtract {self.j}).')
+        return (
+            f"Subtraction would result in negative quantity for game"
+            f" <{self.game.value}> (original had {self.i};"
+            f" trying to subtract {self.j})."
+        )
 
 
 # --- Data structures, continued ---------------------------------------------
@@ -125,6 +127,7 @@ class Quantity:
     Represents the quantity of a given Aprimon combination, split by game /
     profile.
     """
+
     qty: dict[Game, int]
 
     def __init__(self, qty: Optional[dict[Game, int]] = None):
@@ -139,9 +142,7 @@ class Quantity:
 
     def __str__(self):
         return "{:2d}|{:2d}|{:2d}|{:2d}|{:2d}".format(
-            self.qty[Game.SWSH1], self.qty[Game.SWSH2],
-            self.qty[Game.SV1], self.qty[Game.SV2],
-            self.qty[Game.BDSP]
+            *(self.qty[game] for game in Game)
         )
 
     def __add__(self, other):
@@ -158,6 +159,32 @@ class Quantity:
                 raise NegativeQuantityError(game, self.qty[game], other.qty[game])
         return Quantity(new_qty)
 
+    def __getitem__(self, game: Game):
+        return self.qty[game]
+
+    def __setitem__(self, game: Game, value: int):
+        self.qty[game] = value
+
+    @property
+    def swsh1(self):
+        return self.qty[Game.SWSH1]
+
+    @property
+    def swsh2(self):
+        return self.qty[Game.SWSH2]
+
+    @property
+    def sv1(self):
+        return self.qty[Game.SV1]
+
+    @property
+    def sv2(self):
+        return self.qty[Game.SV2]
+
+    @property
+    def bdsp(self):
+        return self.qty[Game.BDSP]
+
 
 class Aprimon:
     ball: Ball
@@ -168,19 +195,33 @@ class Aprimon:
         self.species = canonicalise(species)
 
     def __str__(self):
-        return f'{self.ball.value} {self.species}'
+        return f"{self.ball.value} {self.species}"
+
+    def pretty_print(self):
+        print(str(self))
 
     def __eq__(self, other):
         return self.ball == other.ball and self.species == other.species
 
     def __lt__(self, other):
+        # Lexicographic ordering
         return (self.ball.value, self.species) < (other.ball.value, other.species)
 
     def __hash__(self):
         return hash((self.ball, self.species))
 
+    @classmethod
+    def from_line(cls, line: str):
+        try:
+            (ball_name, species) = line.split()
+        except ValueError:
+            raise ValueError(f"Could not parse line: <{line}> into Aprimon")
+        return cls(ball_name, species)
 
-def parse_apri_qty_from_line(line, game_name=None):
+
+def parse_apri_qty_from_line(
+    line, game_name: Optional[str] = None
+) -> tuple[Aprimon, Quantity]:
     """
     Parse a line of the form
         [<game_name>] <ball_name> <species> <quantity>
@@ -193,12 +234,12 @@ def parse_apri_qty_from_line(line, game_name=None):
         else:
             game_name, ball_name, species, quantity = line.split()
     except ValueError:
-        raise ValueError(f'Could not parse line: <{line}>')
+        raise ValueError(f"Could not parse line: <{line}> into Aprimon and quantity")
 
     try:
         quantity = int(quantity)
     except ValueError:
-        raise ValueError(f'Could not parse quantity: <{quantity}>')
+        raise ValueError(f"Could not parse quantity: <{quantity}>")
 
     game = parse_game(game_name)
     apri = Aprimon(ball_name, species)
@@ -211,25 +252,42 @@ def parse_apri_qty_from_gsheet_row(row: list[str]):
     # of the list. So, we must manually pad the list to the correct length to
     # avoid IndexErrors.
     if len(row) < BDSP_COL + 1:
-        row += [''] * (BDSP_COL + 1 - len(row))
+        row += [""] * (BDSP_COL + 1 - len(row))
 
     ball = row[BALL_COL]
     species = row[SPECIES_COL]
 
     qty = {}
-    for col, game in zip([SWSH1_COL, SWSH2_COL, SV1_COL, SV2_COL, BDSP_COL],
-                         [Game.SWSH1, Game.SWSH2, Game.SV1, Game.SV2, Game.BDSP]):
-        if row[col] == '':
+    for col, game in zip([SWSH1_COL, SWSH2_COL, SV1_COL, SV2_COL, BDSP_COL], Game):
+        if row[col] == "":
             continue
         try:
             qty[game] = int(row[col])
         except ValueError:
-            raise ValueError(f'Could not parse quantity: <{row[col]}>')
+            raise ValueError(f"Could not parse quantity: <{row[col]}>")
 
     return (Aprimon(ball, species), Quantity(qty))
 
 
-class Spreadsheet:
+def make_gsheet_row_from_apri_qty(apri: Aprimon, qty: Quantity, row_number: int):
+    row = [""] * (LAST_COL + 1)
+    # Ball and name
+    row[BALL_COL] = apri.ball.value
+    row[SPECIES_COL] = apri.species
+    # Custom formulas for the stuff in the middle
+    row[2] = rf"=VLOOKUP(A{row_number}, Backend!$AD$4:$AE$20, 2)"
+    row[3] = rf"=VLOOKUP(B{row_number}, Backend!$A$4:$V, Backend!$C$2)"
+    row[4] = rf"=SUM($J{row_number}:$N{row_number})"
+    row[5] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!S$2)"
+    row[6] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!U$2)"
+    row[7] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!V$2)"
+    # Quantities
+    for col, game in zip([SWSH1_COL, SWSH2_COL, SV1_COL, SV2_COL, BDSP_COL], Game):
+        row[col] = str(qty[game])
+    return row
+
+
+class Collection:
     entries: dict[Aprimon, Quantity]
 
     def __init__(self, entries: dict[Aprimon, Quantity]):
@@ -237,7 +295,7 @@ class Spreadsheet:
 
     @classmethod
     def empty(cls):
-        """Initialise a new empty Spreadsheet."""
+        """Initialise a new empty Collection."""
         return cls({})
 
     def add_entry(self, aprimon: Aprimon, quantity: Quantity):
@@ -250,11 +308,11 @@ class Spreadsheet:
     @classmethod
     def from_list(cls, entry_list: list[tuple[Aprimon, Quantity]]):
         """
-        Create a Spreadsheet from a list of (Aprimon, Quantity) pairs. The
+        Create a Collection from a list of (Aprimon, Quantity) pairs. The
         Aprimon need not be unique.
         """
         spreadsheet = cls.empty()
-        for (aprimon, quantity) in entry_list:
+        for aprimon, quantity in entry_list:
             spreadsheet.add_entry(aprimon, quantity)
         return spreadsheet
 
@@ -262,16 +320,20 @@ class Spreadsheet:
         sorted_entries = sorted(self.entries.items(), key=lambda t: t[0])
         longest_aprimon = max(len(str(apri)) for (apri, _) in sorted_entries)
 
-        print('\n'.join(f'{str(apri):{longest_aprimon}s} {str(qty)}'
-                        for (apri, qty) in sorted_entries))
+        print(
+            "\n".join(
+                f"{str(apri):{longest_aprimon}s} {str(qty)}"
+                for (apri, qty) in sorted_entries
+            )
+        )
 
     @classmethod
     def from_sheet(cls):
-        """Create a Spreadsheet by reading in a Google sheet. This uses the
+        """Create a Collection by reading in a Google sheet. This uses the
         global variables defined at the top of the file to find and parse the
         sheet."""
-        last_col_letter = chr(ord('A') + LAST_COL)
-        cells = f'A{N_HEADER_ROWS + 1}:{last_col_letter}'
+        last_col_letter = chr(ord("A") + LAST_COL)
+        cells = f"A{N_HEADER_ROWS + 1}:{last_col_letter}"
         values = ws.get_values(cells)
 
         sheet = cls.empty()
@@ -299,7 +361,7 @@ class Spreadsheet:
                 new_entries[apri] = self.entries[apri]
             else:
                 new_entries[apri] = other.entries[apri]
-        return Spreadsheet(new_entries)
+        return Collection(new_entries)
 
     def __sub__(self, other):
         all_apris = set(self.entries.keys()) | set(other.entries.keys())
@@ -309,20 +371,58 @@ class Spreadsheet:
                 try:
                     new_entries[apri] = self.entries[apri] - other.entries[apri]
                 except NegativeQuantityError as e:
-                    raise ValueError(f'Cannot subtract spreadsheets: entry {apri}'
-                                     f' would have negative quantity in game'
-                                     f' <{e.game.value}> (original quantity'
-                                     f' was {e.i}; trying to subtract'
-                                     f' {e.j}).') from None
+                    raise ValueError(
+                        f"Cannot subtract spreadsheets: entry {apri}"
+                        f" would have negative quantity in game"
+                        f" <{e.game.value}> (original quantity"
+                        f" was {e.i}; trying to subtract"
+                        f" {e.j})."
+                    ) from None
             elif apri in self.entries:
                 new_entries[apri] = self.entries[apri]
             else:
-                raise ValueError(f'Cannot subtract spreadsheets: entry {apri}'
-                                 f' was not present in first spreadsheet.')
-        return Spreadsheet(new_entries)
+                raise ValueError(
+                    f"Cannot subtract spreadsheets: entry {apri}"
+                    f" was not present in first spreadsheet."
+                )
+        return Collection(new_entries)
 
+    def get(self, apri: Aprimon):
+        """Get an entry in the spreadsheet."""
+        if apri in self.entries:
+            return self.entries[apri]
+        else:
+            raise KeyError(f"Could not find entry for {apri}.")
 
-s = Spreadsheet.from_sheet()
-s.pretty_print()
+    def _to_sheet_values(self):
+        sorted_entries = sorted(self.entries.items(), key=lambda t: t[0])
+        return [
+            make_gsheet_row_from_apri_qty(apri, qty, N_HEADER_ROWS + i)
+            for i, (apri, qty) in enumerate(sorted_entries, start=1)
+        ]
 
-s - Spreadsheet.from_lines(['swsh2 beast charmander 1'])
+    def to_sheet(self):
+        values = ws.get_values()
+
+        nrows = len(values)
+        nrows_new = len(self.entries) + N_HEADER_ROWS
+
+        if nrows_new > nrows:
+            # Insert phantom rows at the bottom of the spreadsheet
+            phantom_values = [[""] * LAST_COL] * (nrows_new - nrows)
+            ws.insert_rows(values=phantom_values, row=nrows, inherit_from_before=True)
+        elif nrows_new < nrows:
+            # Delete rows at the bottom
+            ws.delete_rows(start_index=nrows_new + 1, end_index=nrows)
+
+        # Update the spreadsheet values
+        values = self._to_sheet_values()
+        ws.batch_update(
+            [
+                {
+                    "range": f'A{N_HEADER_ROWS + 1}:{chr(ord("A") + LAST_COL)}',
+                    "values": self._to_sheet_values(),
+                }
+            ],
+            value_input_option=ValueInputOption.user_entered,
+        )
