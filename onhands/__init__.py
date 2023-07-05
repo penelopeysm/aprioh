@@ -380,7 +380,7 @@ class Collection:
         return sheet
 
     @classmethod
-    def from_lines(cls, lines: list[str], game: Game = None):
+    def from_lines(cls, lines: list[str], game: Optional[Game] = None):
         """Create a spreadsheet by reading in a list of lines."""
         sheet = cls.empty()
         for line in lines:

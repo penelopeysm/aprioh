@@ -5,8 +5,9 @@
 #   oh add    - Add a list of on-hands
 #   oh rm     - Remove a list of on-hands
 #   oh status - Report quantity of on-hands in each game, split by ball
+#               (aliased to `oh st`)
 #
-# Command-line options for 'oh add' and 'oh rm':
+# Command-line options for `oh add` and `oh rm`:
 #
 #  -f [FILE] - File to read from. If not specified, read from stdin.
 #  -g [GAME] - Game to add each line to. If not specified, the game must be
@@ -32,6 +33,37 @@ def _rm(c_rm: Collection):
     c_new.to_sheet()
 
 
+def _status():
+    """Prints the status of the on-hand sheet"""
+    c = Collection.from_sheet()
+
+    # Print in tabular form
+    separator = "+-----------------------------+-----------------------+"
+    fstr = (
+        "|{:<10s} {:^2s} {:^2s} {:^2s} {:^2s} {:^2s} {:^2s} | {:^2s} {:^2s}"
+        " {:^2s} {:^2s} {:^2s} | {:^5s}|"
+    )
+    print(separator)
+    print(fstr.format("Game", *[b.value[:2] for b in Ball], "Total"))
+    print(separator)
+
+    for game in Game:
+        this_game_entries = {k: v for k, v in c.entries.items() if v[game] > 0}
+        ball_entries = {}
+        for ball in Ball:
+            ball_entries[ball] = sum(
+                v[game] for k, v in this_game_entries.items() if k.ball == ball
+            )
+        print(
+            fstr.format(
+                game.value,
+                *[str(ball_entries[b]) for b in Ball],
+                str(sum(ball_entries.values())),
+            )
+        )
+    print(separator)
+
+
 def parse_args():
     # parse command-line arguments
     parser = argparse.ArgumentParser()
@@ -46,21 +78,21 @@ def parse_args():
     parser_rm.add_argument("-g", "--game", help="Game to remove from")
 
     subparsers.add_parser("status")
+    subparsers.add_parser("st")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
-    # Parse game argument (for oh add and oh rm)
-    if args.game is not None:
-        game = parse_game(args.game)
-        game_str = f" ({game.value})"
-    else:
-        game = None
-        game_str = f" (no game profile specified)"
-
     if args.command == "add":
+        if args.game is not None:
+            game = parse_game(args.game)
+            game_str = f" ({game.value})"
+        else:
+            game = None
+            game_str = f" (no game profile specified)"
+
         if args.file is not None:
             print_heart(f"Adding from file {args.file}{game_str}")
             with open(args.file, "r") as f:
@@ -76,6 +108,13 @@ def main():
                 _add(c_add)
 
     elif args.command == "rm":
+        if args.game is not None:
+            game = parse_game(args.game)
+            game_str = f" ({game.value})"
+        else:
+            game = None
+            game_str = f" (no game profile specified)"
+
         if args.file is not None:
             print_heart(f"Removing from file {args.file}{game_str}")
             with open(args.file, "r") as f:
@@ -90,8 +129,8 @@ def main():
             if len(c_rm) > 0:
                 _rm(c_rm)
 
-    elif args.command == "status":
-        raise NotImplementedError("status not implemented")
+    elif args.command in ["status", "st"]:
+        _status()
 
 
 if __name__ == "__main__":
