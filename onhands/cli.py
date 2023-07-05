@@ -68,10 +68,10 @@ def _status():
     c = Collection.from_sheet()
 
     # Print in tabular form
-    separator = "+-----------------------------+-----------------------+"
+    separator = "+-----------+-------------------+------------------------+"
     fstr = (
-        "|{:<10s} {:^2s} {:^2s} {:^2s} {:^2s} {:^2s} {:^2s} | {:^2s} {:^2s}"
-        " {:^2s} {:^2s} {:^2s} | {:^5s}|"
+        "|{:<10s} | {:>2s} {:>2s} {:>2s} {:>2s} {:>2s} {:>2s} | {:>2s} {:>2s}"
+        " {:>2s} {:>2s} {:>2s} | {:>5s} |"
     )
     print(separator)
     print(fstr.format("Game", *[b.value[:2] for b in Ball], "Total"))
