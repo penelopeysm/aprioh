@@ -1,10 +1,10 @@
-import gspread
-from gspread.utils import ValueInputOption
+import gspread  # type: ignore
+from gspread.utils import ValueInputOption  # type: ignore
 
 import sys
 from itertools import cycle
 from enum import Enum
-from typing import Optional
+from typing import Optional, Iterator
 
 
 # --- Global variables / config ----------------------------------------------
@@ -28,7 +28,7 @@ gs = gspread.service_account()
 
 
 # --- String manipulation functions --------------------------------------------
-def capitalise_first(s):
+def capitalise_first(s: str) -> str:
     if s == "o":
         # Don't capitalise 'o' in Jangmo-o.
         return s
@@ -36,7 +36,7 @@ def capitalise_first(s):
         return s[0].upper() + s[1:]
 
 
-def canonicalise(species_name):
+def canonicalise(species_name: str) -> str:
     """
     Convert a Pokemon name to its canonical capitalisation. e.g.
       'togepi'     -> 'Togepi'
@@ -47,16 +47,20 @@ def canonicalise(species_name):
     return "-".join([capitalise_first(w) for w in words])
 
 
-def yield_heart():
+def yield_heart() -> Iterator[str]:
     yield from cycle(["❤️ ", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"])
 
 
 heart_generator = yield_heart()
 
 
-def print_heart(s):
-    heart_emoji = next(heart_generator)
-    print(f" {heart_emoji} \033[1m{s}\033[0m", file=sys.stderr)
+def print_heart(s: str, quiet: bool = False) -> None:
+    """Print a string to stderr, with bold ANSI escape sequences and prefixed
+    with a colourful heart emoji (because why not). If quiet is True, doesn't
+    do anything."""
+    if not quiet:
+        heart_emoji = next(heart_generator)
+        print(f" {heart_emoji} \033[1m{s}\033[0m", file=sys.stderr)
 
 
 # --- Data structures --------------------------------------------------------
@@ -70,7 +74,7 @@ class Game(Enum):
     BDSP = "BDSP"
 
 
-def parse_game(s):
+def parse_game(s: str) -> Game:
     s2 = s.lower()
     if s2 == "swsh1":
         return Game.SWSH1
@@ -102,7 +106,7 @@ class Ball(Enum):
     SPORT = "Sport"
 
 
-def parse_ball(s):
+def parse_ball(s: str) -> Ball:
     """
     Parse a string into a member of the Ball enum. The string must be a
     (case-insensitive) prefix of exactly one ball name.
@@ -153,18 +157,18 @@ class Quantity:
                 if game not in qty:
                     self.qty[game] = 0
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{:2d}|{:2d}|{:2d}|{:2d}|{:2d}".format(
             *(self.qty[game] for game in Game)
         )
 
-    def __add__(self, other):
+    def __add__(self, other: "Quantity") -> "Quantity":
         new_qty: dict[Game, int] = {}
         for game in Game:
             new_qty[game] = self.qty[game] + other.qty[game]
         return Quantity(new_qty)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Quantity") -> "Quantity":
         new_qty: dict[Game, int] = {}
         for game in Game:
             new_qty[game] = self.qty[game] - other.qty[game]
@@ -172,33 +176,33 @@ class Quantity:
                 raise NegativeQuantityError(game, self.qty[game], other.qty[game])
         return Quantity(new_qty)
 
-    def __getitem__(self, game: Game):
+    def __getitem__(self, game: Game) -> int:
         return self.qty[game]
 
-    def __setitem__(self, game: Game, value: int):
+    def __setitem__(self, game: Game, value: int) -> None:
         self.qty[game] = value
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return all(q == 0 for q in self.qty.values())
 
     @property
-    def swsh1(self):
+    def swsh1(self) -> int:
         return self.qty[Game.SWSH1]
 
     @property
-    def swsh2(self):
+    def swsh2(self) -> int:
         return self.qty[Game.SWSH2]
 
     @property
-    def sv1(self):
+    def sv1(self) -> int:
         return self.qty[Game.SV1]
 
     @property
-    def sv2(self):
+    def sv2(self) -> int:
         return self.qty[Game.SV2]
 
     @property
-    def bdsp(self):
+    def bdsp(self) -> int:
         return self.qty[Game.BDSP]
 
 
@@ -210,24 +214,26 @@ class Aprimon:
         self.ball = parse_ball(ball)
         self.species = canonicalise(species)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.ball.value} {self.species}"
 
-    def pretty_print(self):
+    def pretty_print(self) -> None:
         print(str(self))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Aprimon):
+            return NotImplemented
         return self.ball == other.ball and self.species == other.species
 
-    def __lt__(self, other):
+    def __lt__(self, other: "Aprimon") -> bool:
         # Lexicographic ordering
         return (self.ball.value, self.species) < (other.ball.value, other.species)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.ball, self.species))
 
     @classmethod
-    def from_line(cls, line: str):
+    def from_line(cls, line: str) -> "Aprimon":
         try:
             (ball_name, species) = line.split()
         except ValueError:
@@ -244,41 +250,32 @@ def parse_apri_qty_from_line(
     into an (Aprimon, Quantity) pair. If `game_name` is specified, then the
     line should not contain game.
     """
-    if game is not None:
-        words = line.split()
-        if len(words) == 2:
-            ball_name, species = words
-            quantity = 1
-        elif len(words) == 3:
-            ball_name, species, quantity = words
-        else:
-            raise ValueError(
-                f"Could not parse line: <{line}> into Aprimon and quantity"
-            )
-    else:
-        words = line.split()
-        if len(words) == 3:
-            game_name, ball_name, species = words
-            quantity = 1
-        elif len(words) == 4:
-            game_name, ball_name, species, quantity = words
-        else:
-            raise ValueError(
-                f"Could not parse line: <{line}> into game, Aprimon and quantity"
-            )
-        game = parse_game(game_name)
+    if game is None:
+        game_name, line = line.split(maxsplit=1)
+        try:
+            game = parse_game(game_name)
+        except ValueError:
+            raise ValueError(f"Could not parse game: <{game_name}>")
 
-    try:
-        quantity = int(quantity)
-    except ValueError:
-        raise ValueError(f"Could not parse quantity: <{quantity}>")
+    words = line.split()
+    if len(words) == 2:
+        ball_name, species = words
+        quantity = 1
+    elif len(words) == 3:
+        ball_name, species, quantity_str = words
+        try:
+            quantity = int(quantity_str)
+        except ValueError:
+            raise ValueError(f"Could not parse quantity: <{quantity_str}>")
+    else:
+        raise ValueError(f"Could not parse line: <{line}> into Aprimon and quantity")
 
     apri = Aprimon(ball_name, species)
     qty = Quantity({game: quantity})
     return (apri, qty)
 
 
-def parse_apri_qty_from_gsheet_row(row: list[str]):
+def parse_apri_qty_from_gsheet_row(row: list[str]) -> tuple[Aprimon, Quantity]:
     # gspread (or perhaps Google's API) doesn't return empty cells at the end
     # of the list. So, we must manually pad the list to the correct length to
     # avoid IndexErrors.
@@ -300,7 +297,9 @@ def parse_apri_qty_from_gsheet_row(row: list[str]):
     return (Aprimon(ball, species), Quantity(qty))
 
 
-def make_gsheet_row_from_apri_qty(apri: Aprimon, qty: Quantity, row_number: int):
+def make_gsheet_row_from_apri_qty(
+    apri: Aprimon, qty: Quantity, row_number: int
+) -> list[str]:
     row = [""] * (LAST_COL + 1)
     # Ball and name
     row[BALL_COL] = apri.ball.value
@@ -325,22 +324,22 @@ class Collection:
         self.entries = entries
 
     @classmethod
-    def empty(cls):
+    def empty(cls) -> "Collection":
         """Initialise a new empty Collection."""
         return cls({})
 
-    def add_entry(self, aprimon: Aprimon, quantity: Quantity):
+    def add_entry(self, aprimon: Aprimon, quantity: Quantity) -> None:
         """Add one entry to an existing spreadsheet."""
         if aprimon in self.entries:
             self.entries[aprimon] += quantity
         else:
             self.entries[aprimon] = quantity
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.entries)
 
     @classmethod
-    def from_list(cls, entry_list: list[tuple[Aprimon, Quantity]]):
+    def from_list(cls, entry_list: list[tuple[Aprimon, Quantity]]) -> "Collection":
         """
         Create a Collection from a list of (Aprimon, Quantity) pairs. The
         Aprimon need not be unique.
@@ -350,7 +349,7 @@ class Collection:
             spreadsheet.add_entry(aprimon, quantity)
         return spreadsheet
 
-    def pretty_print(self):
+    def pretty_print(self) -> None:
         sorted_entries = sorted(self.entries.items(), key=lambda t: t[0])
         longest_aprimon = max(len(str(apri)) for (apri, _) in sorted_entries)
 
@@ -362,12 +361,11 @@ class Collection:
         )
 
     @classmethod
-    def from_sheet(cls, quiet=False):
+    def from_sheet(cls, quiet=False) -> "Collection":
         """Create a Collection by reading in a (preset) Google sheet. This uses
         the global variables defined at the top of the file to find and parse
         the sheet."""
-        if not quiet:
-            print_heart("Reading in spreadsheet...")
+        print_heart("Reading in spreadsheet...", quiet=quiet)
         ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
 
         last_col_letter = chr(ord("A") + LAST_COL)
@@ -381,7 +379,7 @@ class Collection:
         return sheet
 
     @classmethod
-    def from_lines(cls, lines: list[str], game: Optional[Game] = None):
+    def from_lines(cls, lines: list[str], game: Optional[Game] = None) -> "Collection":
         """Create a spreadsheet by reading in a list of lines."""
         sheet = cls.empty()
         for line in lines:
@@ -389,7 +387,7 @@ class Collection:
             sheet.add_entry(apri, qty)
         return sheet
 
-    def __add__(self, other):
+    def __add__(self, other: "Collection") -> "Collection":
         all_apris = set(self.entries.keys()) | set(other.entries.keys())
         new_entries = {}
         for apri in all_apris:
@@ -401,7 +399,7 @@ class Collection:
                 new_entries[apri] = other.entries[apri]
         return Collection(new_entries)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Collection") -> "Collection":
         all_apris = set(self.entries.keys()) | set(other.entries.keys())
         new_entries = {}
         for apri in all_apris:
@@ -425,14 +423,14 @@ class Collection:
                 )
         return Collection(new_entries)
 
-    def get(self, apri: Aprimon):
+    def get(self, apri: Aprimon) -> Quantity:
         """Get an entry in the spreadsheet."""
         if apri in self.entries:
             return self.entries[apri]
         else:
             raise KeyError(f"Could not find entry for {apri}.")
 
-    def _to_sheet_values(self):
+    def _to_sheet_values(self) -> list[list[str]]:
         nonempty_entries = [
             (apri, qty) for apri, qty in self.entries.items() if not qty.is_empty()
         ]
@@ -442,7 +440,7 @@ class Collection:
             for i, (apri, qty) in enumerate(sorted_entries, start=1)
         ]
 
-    def to_sheet(self, quiet=False):
+    def to_sheet(self, quiet=False) -> None:
         gs = gspread.service_account()
         ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
         values = ws.get_values()
@@ -450,8 +448,7 @@ class Collection:
         nrows = len(values)
         nrows_new = len(self.entries) + N_HEADER_ROWS
 
-        if not quiet:
-            print_heart("Updating number of rows in spreadsheet...")
+        print_heart("Updating number of rows in spreadsheet...", quiet=quiet)
         if nrows_new > nrows:
             # Insert phantom rows at the bottom of the spreadsheet
             phantom_values = [[""] * LAST_COL] * (nrows_new - nrows)
@@ -463,8 +460,7 @@ class Collection:
             ws.delete_rows(start_index=nrows_new + 1, end_index=nrows)
 
         # Update the spreadsheet values
-        if not quiet:
-            print_heart("Updating spreadsheet values...")
+        print_heart("Updating spreadsheet values...", quiet=quiet)
         values = self._to_sheet_values()
         ws.batch_update(
             [
@@ -477,8 +473,7 @@ class Collection:
         )
 
         # Update spreadsheet borders
-        if not quiet:
-            print_heart("Updating spreadsheet borders...")
+        print_heart("Updating spreadsheet borders...", quiet=quiet)
         border_style = {
             "style": "SOLID",
             "colorStyle": {
@@ -500,5 +495,4 @@ class Collection:
             },
         )
 
-        if not quiet:
-            print_heart("Done.")
+        print_heart("Done.", quiet=quiet)

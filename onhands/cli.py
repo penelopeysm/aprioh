@@ -19,21 +19,21 @@ import argparse
 from onhands import *
 
 
-def _add(c_add: Collection):
+def _add(c_add: Collection) -> None:
     """Adds the specified collection to the on-hand sheet"""
     c = Collection.from_sheet()
     c_new = c + c_add
     c_new.to_sheet()
 
 
-def _rm(c_rm: Collection):
+def _rm(c_rm: Collection) -> None:
     """Removes the specified collection from the on-hand sheet"""
     c = Collection.from_sheet()
     c_new = c - c_rm
     c_new.to_sheet()
 
 
-def _search(apris: list[Aprimon]):
+def _search(apris: list[Aprimon]) -> None:
     c = Collection.from_sheet()
 
     search_hits: dict[Game, list[Aprimon]] = {g: [] for g in Game}
@@ -44,8 +44,7 @@ def _search(apris: list[Aprimon]):
             # The ordering of this list block is important, because we want to
             # try to first find the Aprimon in the 4+IV sections. If it's not
             # found there, then we search in the 3IV sections, and then BDSP.
-            for game in [Game.SWSH1, Game.SV1, Game.SWSH2, Game.SV2,
-                         Game.BDSP]:
+            for game in [Game.SWSH1, Game.SV1, Game.SWSH2, Game.SV2, Game.BDSP]:
                 if qty[game] > 0:
                     search_hits[game].append(apri)
                     break
@@ -56,14 +55,14 @@ def _search(apris: list[Aprimon]):
 
     # Print results
     print_heart(f"Found {len(search_hits)} of {len(apris)} Aprimon.")
-    for game, text in zip(Game, ['swsh1', 'swsh2', 'sv1', 'sv2', 'bdsp']):
+    for game, text in zip(Game, ["swsh1", "swsh2", "sv1", "sv2", "bdsp"]):
         for apri in search_hits[game]:
             print(f"{text} {str(apri)}")
     if len(search_misses) > 0:
         print_heart(f"Not found: {', '.join(str(a) for a in search_misses)}")
 
 
-def _status():
+def _status() -> None:
     """Prints the status of the on-hand sheet"""
     c = Collection.from_sheet()
 
@@ -94,7 +93,7 @@ def _status():
     print(separator)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
 
@@ -115,7 +114,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     if args.command == "add":
@@ -180,7 +179,6 @@ def main():
 
         if len(apris) > 0:
             _search(apris)
-
 
     elif args.command in ["status", "st"]:
         _status()
