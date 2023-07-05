@@ -1,6 +1,7 @@
 import gspread
 from gspread.utils import ValueInputOption
 
+import sys
 from itertools import cycle
 from enum import Enum
 from typing import Optional
@@ -8,7 +9,7 @@ from typing import Optional
 
 # --- Global variables / config ----------------------------------------------
 SPREADSHEET_ID = "1IR6rCNQYFccBrc_cxNVv2gEQnVpecEAo58IDRJYWNlo"
-TAB_NAME = "Copy of On-hands"
+TAB_NAME = "On-hands"
 N_HEADER_ROWS = 3
 BALL_COL = 0  # 0 = 'A'
 SPECIES_COL = 1
@@ -55,7 +56,7 @@ heart_generator = yield_heart()
 
 def print_heart(s):
     heart_emoji = next(heart_generator)
-    print(f" {heart_emoji} \033[1m{s}\033[0m")
+    print(f" {heart_emoji} \033[1m{s}\033[0m", file=sys.stderr)
 
 
 # --- Data structures --------------------------------------------------------
@@ -235,7 +236,7 @@ class Aprimon:
 
 
 def parse_apri_qty_from_line(
-    line, game: Optional[Game] = None
+    line: str, game: Optional[Game] = None
 ) -> tuple[Aprimon, Quantity]:
     """
     Parse a line of the form
@@ -256,10 +257,10 @@ def parse_apri_qty_from_line(
             )
     else:
         words = line.split()
-        if len(words) == 2:
+        if len(words) == 3:
             game_name, ball_name, species = words
             quantity = 1
-        elif len(words) == 3:
+        elif len(words) == 4:
             game_name, ball_name, species, quantity = words
         else:
             raise ValueError(

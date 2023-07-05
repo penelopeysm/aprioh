@@ -33,6 +33,36 @@ def _rm(c_rm: Collection):
     c_new.to_sheet()
 
 
+def _search(apris: list[Aprimon]):
+    c = Collection.from_sheet()
+
+    search_hits: dict[Game, list[Aprimon]] = {g: [] for g in Game}
+    search_misses: list[Aprimon] = []
+    for apri in apris:
+        try:
+            qty = c.get(apri)
+            # The ordering of this list block is important, because we want to
+            # try to first find the Aprimon in the 4+IV sections. If it's not
+            # found there, then we search in the 3IV sections, and then BDSP.
+            for game in [Game.SWSH1, Game.SV1, Game.SWSH2, Game.SV2,
+                         Game.BDSP]:
+                if qty[game] > 0:
+                    search_hits[game].append(apri)
+                    break
+            else:  # all 0; this shouldn't happen
+                search_misses.append(apri)
+        except KeyError:
+            search_misses.append(apri)
+
+    # Print results
+    print_heart(f"Found {len(search_hits)} of {len(apris)} Aprimon.")
+    for game, text in zip(Game, ['swsh1', 'swsh2', 'sv1', 'sv2', 'bdsp']):
+        for apri in search_hits[game]:
+            print(f"{text} {str(apri)}")
+    if len(search_misses) > 0:
+        print_heart(f"Not found: {', '.join(str(a) for a in search_misses)}")
+
+
 def _status():
     """Prints the status of the on-hand sheet"""
     c = Collection.from_sheet()
@@ -65,7 +95,6 @@ def _status():
 
 
 def parse_args():
-    # parse command-line arguments
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
 
@@ -77,8 +106,12 @@ def parse_args():
     parser_rm.add_argument("-f", "--file", help="File to read from")
     parser_rm.add_argument("-g", "--game", help="Game to remove from")
 
+    parser_search = subparsers.add_parser("search")
+    parser_search.add_argument("-f", "--file", help="File to read from")
+
     subparsers.add_parser("status")
     subparsers.add_parser("st")
+
     return parser.parse_args()
 
 
@@ -128,6 +161,26 @@ def main():
             c_rm = Collection.from_lines(lines, game=game)
             if len(c_rm) > 0:
                 _rm(c_rm)
+
+    elif args.command == "search":
+        apris = []
+
+        if args.file is not None:
+            print_heart(f"Searching from file {args.file}")
+            with open(args.file, "r") as f:
+                lines = f.readlines()
+        else:
+            print_heart("Searching from stdin")
+            lines = sys.stdin.readlines()
+
+        for line in lines:
+            if line.strip() == "":
+                continue
+            apris.append(Aprimon.from_line(line))
+
+        if len(apris) > 0:
+            _search(apris)
+
 
     elif args.command in ["status", "st"]:
         _status()
