@@ -5,3 +5,6 @@ authors = [
     {name = "Penelope Yong", email = "penelopeysm@gmail.com"}
 ]
 dependencies = ["gspread"]
+
+[project.scripts]
+oh = "onhands.cli:main"
