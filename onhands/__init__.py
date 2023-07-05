@@ -1,6 +1,7 @@
 import gspread
 from gspread.utils import ValueInputOption
 
+from itertools import cycle
 from enum import Enum
 from typing import Optional
 
@@ -20,10 +21,9 @@ LAST_COL = BDSP_COL  # Last column of interest.
 
 
 # --- Initialise gspread -----------------------------------------------------
-# This assumes that a service account exists with its credentials are stored in
+# This assumes that a service account exists with its credentials stored in
 # ~/.config/gspread/service_account.json.
 gs = gspread.service_account()
-ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
 
 
 # --- String manipulation functions --------------------------------------------
@@ -44,6 +44,18 @@ def canonicalise(species_name):
     """
     words = species_name.lower().split("-")
     return "-".join([capitalise_first(w) for w in words])
+
+
+def yield_heart():
+    yield from cycle(["❤️ ", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"])
+
+
+heart_generator = yield_heart()
+
+
+def print_heart(s):
+    heart_emoji = next(heart_generator)
+    print(f" {heart_emoji} \033[1m{s}\033[0m")
 
 
 # --- Data structures --------------------------------------------------------
@@ -165,6 +177,9 @@ class Quantity:
     def __setitem__(self, game: Game, value: int):
         self.qty[game] = value
 
+    def is_empty(self):
+        return all(q == 0 for q in self.qty.values())
+
     @property
     def swsh1(self):
         return self.qty[Game.SWSH1]
@@ -220,7 +235,7 @@ class Aprimon:
 
 
 def parse_apri_qty_from_line(
-    line, game_name: Optional[str] = None
+    line, game: Optional[Game] = None
 ) -> tuple[Aprimon, Quantity]:
     """
     Parse a line of the form
@@ -228,20 +243,35 @@ def parse_apri_qty_from_line(
     into an (Aprimon, Quantity) pair. If `game_name` is specified, then the
     line should not contain game.
     """
-    try:
-        if game_name is not None:
-            ball_name, species, quantity = line.split()
+    if game is not None:
+        words = line.split()
+        if len(words) == 2:
+            ball_name, species = words
+            quantity = 1
+        elif len(words) == 3:
+            ball_name, species, quantity = words
         else:
-            game_name, ball_name, species, quantity = line.split()
-    except ValueError:
-        raise ValueError(f"Could not parse line: <{line}> into Aprimon and quantity")
+            raise ValueError(
+                f"Could not parse line: <{line}> into Aprimon and quantity"
+            )
+    else:
+        words = line.split()
+        if len(words) == 2:
+            game_name, ball_name, species = words
+            quantity = 1
+        elif len(words) == 3:
+            game_name, ball_name, species, quantity = words
+        else:
+            raise ValueError(
+                f"Could not parse line: <{line}> into game, Aprimon and quantity"
+            )
+        game = parse_game(game_name)
 
     try:
         quantity = int(quantity)
     except ValueError:
         raise ValueError(f"Could not parse quantity: <{quantity}>")
 
-    game = parse_game(game_name)
     apri = Aprimon(ball_name, species)
     qty = Quantity({game: quantity})
     return (apri, qty)
@@ -283,7 +313,7 @@ def make_gsheet_row_from_apri_qty(apri: Aprimon, qty: Quantity, row_number: int)
     row[7] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!V$2)"
     # Quantities
     for col, game in zip([SWSH1_COL, SWSH2_COL, SV1_COL, SV2_COL, BDSP_COL], Game):
-        row[col] = str(qty[game])
+        row[col] = "" if qty[game] == 0 else str(qty[game])
     return row
 
 
@@ -304,6 +334,9 @@ class Collection:
             self.entries[aprimon] += quantity
         else:
             self.entries[aprimon] = quantity
+
+    def __len__(self):
+        return len(self.entries)
 
     @classmethod
     def from_list(cls, entry_list: list[tuple[Aprimon, Quantity]]):
@@ -328,10 +361,14 @@ class Collection:
         )
 
     @classmethod
-    def from_sheet(cls):
-        """Create a Collection by reading in a Google sheet. This uses the
-        global variables defined at the top of the file to find and parse the
-        sheet."""
+    def from_sheet(cls, quiet=False):
+        """Create a Collection by reading in a (preset) Google sheet. This uses
+        the global variables defined at the top of the file to find and parse
+        the sheet."""
+        if not quiet:
+            print_heart("Reading in spreadsheet...")
+        ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
+
         last_col_letter = chr(ord("A") + LAST_COL)
         cells = f"A{N_HEADER_ROWS + 1}:{last_col_letter}"
         values = ws.get_values(cells)
@@ -395,27 +432,38 @@ class Collection:
             raise KeyError(f"Could not find entry for {apri}.")
 
     def _to_sheet_values(self):
-        sorted_entries = sorted(self.entries.items(), key=lambda t: t[0])
+        nonempty_entries = [
+            (apri, qty) for apri, qty in self.entries.items() if not qty.is_empty()
+        ]
+        sorted_entries = sorted(nonempty_entries, key=lambda t: t[0])
         return [
             make_gsheet_row_from_apri_qty(apri, qty, N_HEADER_ROWS + i)
             for i, (apri, qty) in enumerate(sorted_entries, start=1)
         ]
 
-    def to_sheet(self):
+    def to_sheet(self, quiet=False):
+        gs = gspread.service_account()
+        ws = gs.open_by_key(SPREADSHEET_ID).worksheet(TAB_NAME)
         values = ws.get_values()
 
         nrows = len(values)
         nrows_new = len(self.entries) + N_HEADER_ROWS
 
+        if not quiet:
+            print_heart("Updating number of rows in spreadsheet...")
         if nrows_new > nrows:
             # Insert phantom rows at the bottom of the spreadsheet
             phantom_values = [[""] * LAST_COL] * (nrows_new - nrows)
-            ws.insert_rows(values=phantom_values, row=nrows, inherit_from_before=True)
+            ws.insert_rows(
+                values=phantom_values, row=nrows + 1, inherit_from_before=True
+            )
         elif nrows_new < nrows:
             # Delete rows at the bottom
             ws.delete_rows(start_index=nrows_new + 1, end_index=nrows)
 
         # Update the spreadsheet values
+        if not quiet:
+            print_heart("Updating spreadsheet values...")
         values = self._to_sheet_values()
         ws.batch_update(
             [
@@ -426,3 +474,30 @@ class Collection:
             ],
             value_input_option=ValueInputOption.user_entered,
         )
+
+        # Update spreadsheet borders
+        if not quiet:
+            print_heart("Updating spreadsheet borders...")
+        border_style = {
+            "style": "SOLID",
+            "colorStyle": {
+                "rgbColor": {
+                    "red": 0.95294,
+                    "green": 0.95294,
+                    "blue": 0.95294,
+                    "alpha": 1,
+                }
+            },
+        }
+        ws.format(
+            f"{chr(ord('A') + SWSH1_COL)}{N_HEADER_ROWS + 1}:{chr(ord('A') + LAST_COL)}",
+            {
+                "borders": {
+                    "bottom": border_style,
+                    "right": border_style,
+                }
+            },
+        )
+
+        if not quiet:
+            print_heart("Done.")
