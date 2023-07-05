@@ -4,4 +4,7 @@
 
 usage:
 
-    python -m onhands.cli [args]
+```bash
+pip install .
+oh -h
+```
