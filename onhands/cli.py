@@ -54,7 +54,8 @@ def _search(apris: list[Aprimon], quiet: bool = False) -> None:
             search_misses.append(apri)
 
     # Print results
-    print_heart(f"Found {len(search_hits)} of {len(apris)} Aprimon.",
+    print_heart(f"Found {sum(len(hits) for hits in search_hits.values())}"
+                f" of {len(apris)} Aprimon.",
                 quiet=quiet)
     for game, text in zip(Game, ["swsh1", "swsh2", "sv1", "sv2", "bdsp"]):
         for apri in sorted(search_hits[game]):
