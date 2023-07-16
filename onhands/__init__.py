@@ -9,7 +9,7 @@ from typing import Optional, Iterator
 
 # --- Global variables / config ----------------------------------------------
 SPREADSHEET_ID = "1IR6rCNQYFccBrc_cxNVv2gEQnVpecEAo58IDRJYWNlo"
-TAB_NAME = "On-hands"
+TAB_NAME = "testing"
 N_HEADER_ROWS = 3
 BALL_COL = 0  # 0 = 'A'
 SPECIES_COL = 1
@@ -421,7 +421,13 @@ class Collection:
                     f"Cannot subtract spreadsheets: entry {apri}"
                     f" was not present in first spreadsheet."
                 )
-        return Collection(new_entries)
+        return Collection(new_entries).prune()
+
+    def prune(self) -> "Collection":
+        """Remove all empty entries."""
+        return Collection({apri: qty
+                           for apri, qty in self.entries.items()
+                           if not qty.is_empty()})
 
     def get(self, apri: Aprimon) -> Quantity:
         """Get an entry in the spreadsheet."""
