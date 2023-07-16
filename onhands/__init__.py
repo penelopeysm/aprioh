@@ -9,7 +9,7 @@ from typing import Optional, Iterator
 
 # --- Global variables / config ----------------------------------------------
 SPREADSHEET_ID = "1IR6rCNQYFccBrc_cxNVv2gEQnVpecEAo58IDRJYWNlo"
-TAB_NAME = "testing"
+TAB_NAME = "On-hands"
 N_HEADER_ROWS = 3
 BALL_COL = 0  # 0 = 'A'
 SPECIES_COL = 1
@@ -39,12 +39,20 @@ def capitalise_first(s: str) -> str:
 def canonicalise(species_name: str) -> str:
     """
     Convert a Pokemon name to its canonical capitalisation. e.g.
-      'togepi'     -> 'Togepi'
-      'indeedee-f' -> 'Indeedee-F'
-      'jangmo-o'   -> 'Jangmo-o'
+      'togepi'       -> 'Togepi'
+      'indeedee-f'   -> 'Indeedee-F'
+      'jangmo-o'     -> 'Jangmo-o'
+
+    Also, add accents to Flabebe's name:
+      'flabebe-blue' -> 'Flabébé-Blue'
+    and convert 'mime' or 'mrmime' to 'Mr. Mime':
+      'mime-galar'   -> 'Mr. Mime-Galar'
     """
     words = species_name.lower().split("-")
-    return "-".join([capitalise_first(w) for w in words])
+    name = "-".join([capitalise_first(w) for w in words])
+    name = name.replace("Flabebe", "Flabébé")
+    name = name.replace("Mime", "Mr. Mime")
+    return name
 
 
 def yield_heart() -> Iterator[str]:
