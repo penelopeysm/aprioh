@@ -383,6 +383,9 @@ class Collection:
         """Create a spreadsheet by reading in a list of lines."""
         sheet = cls.empty()
         for line in lines:
+            line = line.strip()
+            if line == "":
+                continue
             apri, qty = parse_apri_qty_from_line(line, game)
             sheet.add_entry(apri, qty)
         return sheet
