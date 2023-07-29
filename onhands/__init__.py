@@ -48,7 +48,8 @@ def canonicalise(species_name: str) -> str:
     and convert 'mime' or 'mrmime' to 'Mr. Mime':
       'mime-galar'   -> 'Mr. Mime-Galar'
     """
-    words = species_name.lower().split("-")
+    species_name = species_name.lower().replace("mr. mime", "mime")
+    words = species_name.split("-")
     name = "-".join([capitalise_first(w) for w in words])
     name = name.replace("Flabebe", "Flabébé")
     name = name.replace("Mime", "Mr. Mime")
@@ -311,7 +312,7 @@ def make_gsheet_row_from_apri_qty(
     row = [""] * (LAST_COL + 1)
     # Ball and name
     row[BALL_COL] = apri.ball.value
-    row[SPECIES_COL] = apri.species
+    row[SPECIES_COL] = canonicalise(apri.species)
     # Custom formulas for the stuff in the middle
     row[2] = rf"=VLOOKUP(A{row_number}, Backend!$AD$4:$AE$20, 2)"
     row[3] = rf"=VLOOKUP(B{row_number}, Backend!$A$4:$V, Backend!$C$2)"
