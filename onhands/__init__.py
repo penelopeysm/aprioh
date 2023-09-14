@@ -314,12 +314,12 @@ def make_gsheet_row_from_apri_qty(
     row[BALL_COL] = apri.ball.value
     row[SPECIES_COL] = canonicalise(apri.species)
     # Custom formulas for the stuff in the middle
-    row[2] = rf"=VLOOKUP(A{row_number}, Backend!$AD$4:$AE$20, 2)"
-    row[3] = rf"=VLOOKUP(B{row_number}, Backend!$A$4:$V, Backend!$C$2)"
+    row[2] = rf"=XLOOKUP(A{row_number}, BallNames, BallSprites)"
+    row[3] = rf"=XLOOKUP(B{row_number}, Names, Sprites)"
     row[4] = rf"=SUM($J{row_number}:$N{row_number})"
-    row[5] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!S$2)"
-    row[6] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!U$2)"
-    row[7] = rf"=VLOOKUP($B{row_number}, Backend!$A$4:$V, Backend!V$2)"
+    row[5] = rf"=XLOOKUP($B{row_number}, Names, SwSh)"
+    row[6] = rf"=XLOOKUP($B{row_number}, Names, BDSP)"
+    row[7] = rf"=XLOOKUP($B{row_number}, Names, SV)"
     # Quantities
     for col, game in zip([SWSH1_COL, SWSH2_COL, SV1_COL, SV2_COL, BDSP_COL], Game):
         row[col] = "" if qty[game] == 0 else str(qty[game])
