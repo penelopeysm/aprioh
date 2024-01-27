@@ -79,6 +79,7 @@ def _status(quiet: bool = False) -> None:
     print(fstr.format("Game", *[b.value[:2] for b in Ball], "Total"))
     print(separator)
 
+    total = 0
     for game in Game:
         this_game_entries = {k: v for k, v in c.entries.items() if v[game] > 0}
         ball_entries = {}
@@ -86,13 +87,17 @@ def _status(quiet: bool = False) -> None:
             ball_entries[ball] = sum(
                 v[game] for k, v in this_game_entries.items() if k.ball == ball
             )
+        total_in_this_game = sum(ball_entries.values())
+        total += total_in_this_game
         print(
             fstr.format(
                 game.value,
                 *[str(ball_entries[b]) for b in Ball],
-                str(sum(ball_entries.values())),
+                str(total_in_this_game),
             )
         )
+    print(separator)
+    print(fstr.format("Total", *["" for _ in Ball], str(total)))
     print(separator)
 
 
