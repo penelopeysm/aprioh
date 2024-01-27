@@ -264,7 +264,8 @@ def parse_apri_qty_from_line(
         try:
             game = parse_game(game_name)
         except ValueError:
-            raise ValueError(f"Could not parse game: <{game_name}>")
+            raise ValueError(f"Could not parse game: <{game_name}> in"
+                             f" line <{line}>")
 
     words = line.split()
     if len(words) == 2:
@@ -275,7 +276,8 @@ def parse_apri_qty_from_line(
         try:
             quantity = int(quantity_str)
         except ValueError:
-            raise ValueError(f"Could not parse quantity: <{quantity_str}>")
+            raise ValueError(f"Could not parse quantity: <{quantity_str}> in"
+                             f" line <{line}>")
     else:
         raise ValueError(f"Could not parse line: <{line}> into Aprimon and quantity")
 
@@ -301,7 +303,8 @@ def parse_apri_qty_from_gsheet_row(row: list[str]) -> tuple[Aprimon, Quantity]:
         try:
             qty[game] = int(row[col])
         except ValueError:
-            raise ValueError(f"Could not parse quantity: <{row[col]}>")
+            raise ValueError(f"Could not parse quantity: <{row[col]}> in"
+                             f" row <{row}>")
 
     return (Aprimon(ball, species), Quantity(qty))
 
