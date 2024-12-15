@@ -438,6 +438,9 @@ class Collection:
                 )
         return Collection(new_entries).prune()
 
+    def __iter__(self) -> Iterator[tuple[Aprimon, Quantity]]:
+        return iter(self.entries.items())
+
     def prune(self) -> "Collection":
         """Remove all empty entries."""
         return Collection({apri: qty

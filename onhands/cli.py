@@ -26,6 +26,20 @@ def _add(c_add: Collection, quiet: bool = False) -> None:
     c_new.to_sheet(quiet=quiet)
 
 
+def _list(game: Game, ball: Ball | None, quiet: bool = False) -> None:
+    """Lists all Aprimon with a given ball in a given game"""
+    c = Collection.from_sheet(quiet=quiet)
+    total = 0
+    longest_apri_name_length = 0
+    for apri, qty in c:
+        if (ball is None or apri.ball == ball) and qty[game] > 0:
+            print(f"{qty[game]:>4d}  {apri}")
+            longest_apri_name_length = max(longest_apri_name_length, len(str(apri)))
+            total += qty[game]
+    print("-" * (longest_apri_name_length + 6))
+    print(f"{total:>4d}  total")
+
+
 def _rm(c_rm: Collection, quiet: bool = False) -> None:
     """Removes the specified collection from the on-hand sheet"""
     c = Collection.from_sheet(quiet=quiet)
@@ -111,6 +125,13 @@ def parse_args() -> argparse.Namespace:
     parser_add.add_argument("-q", "--quiet", action="store_true",
                             help="Do not print progress output")
 
+    parser_list = subparsers.add_parser("list")
+    parser_list.add_argument("-g", "--game", help="Game to list from",
+                             required=True)
+    parser_list.add_argument("-b", "--ball", help="List only a specific ball",)
+    parser_list.add_argument("-q", "--quiet", action="store_true",
+                               help="Do not print progress output")
+
     parser_rm = subparsers.add_parser("rm")
     parser_rm.add_argument("-f", "--file", help="File to read from")
     parser_rm.add_argument("-g", "--game", help="Game to remove from")
@@ -155,6 +176,14 @@ def main() -> None:
             c_add = Collection.from_lines(lines, game=game)
             if len(c_add) > 0:
                 _add(c_add, quiet=args.quiet)
+
+    elif args.command == "list":
+        game = parse_game(args.game)
+        if args.ball is not None:
+            ball = parse_ball(args.ball)
+        else:
+            ball = None
+        _list(game=game, ball=ball, quiet=args.quiet)
 
     elif args.command == "rm":
         if args.game is not None:
