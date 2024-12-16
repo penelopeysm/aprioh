@@ -29,15 +29,11 @@ def _add(c_add: Collection, quiet: bool = False) -> None:
 def _list(game: Game, ball: Ball | None, quiet: bool = False) -> None:
     """Lists all Aprimon with a given ball in a given game"""
     c = Collection.from_sheet(quiet=quiet)
-    total = 0
-    longest_apri_name_length = 0
+    cumulative = 0
     for apri, qty in c:
         if (ball is None or apri.ball == ball) and qty[game] > 0:
-            print(f"{qty[game]:>4d}  {apri}")
-            longest_apri_name_length = max(longest_apri_name_length, len(str(apri)))
-            total += qty[game]
-    print("-" * (longest_apri_name_length + 6))
-    print(f"{total:>4d}  total")
+            cumulative += qty[game]
+            print(f"{'(' + str(cumulative) + ')':>5s} {qty[game]:2d} {apri}")
 
 
 def _rm(c_rm: Collection, quiet: bool = False) -> None:
