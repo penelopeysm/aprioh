@@ -6,8 +6,11 @@
 #   oh rm     - Remove a list of on-hands
 #   oh status - Report quantity of on-hands in each game, split by ball
 #               (aliased to `oh st`)
+#   oh list   - List all Aprimon with a given ball in a given game
+#   oh tidy   - Convert common Discord lists of Aprimon to a format understood
+#               by the other commands in this
 #
-# Command-line options for `oh add` and `oh rm`:
+# Common command-line options:
 #
 #  -f [FILE] - File to read from. If not specified, read from stdin.
 #  -g [GAME] - Game to add each line to. If not specified, the game must be
@@ -143,6 +146,8 @@ def parse_args() -> argparse.Namespace:
     parser_status.add_argument("-q", "--quiet", action="store_true",
                                help="Do not print progress output")
 
+    parser_tidy = subparsers.add_parser("tidy", help="convert Discord lists to standard format")
+
     return parser.parse_args()
 
 
@@ -229,6 +234,16 @@ def main() -> None:
     elif args.command == "status" or args.command == "st":
         _status(quiet=args.quiet)
 
+    elif args.command == "tidy":
+        # Convert lines that look like, e.g., "Togepi :dreamball:" to "dream togepi"
+        lines = sys.stdin.readlines()
+        for line in lines:
+            words = line.split()
+            # assume that :xxxball: is a ball
+            balls = [w[1:-5] for w in words if w.startswith(":") and w.endswith("ball:")]
+            species = " ".join([w for w in words if not (w.startswith(":") and w.endswith("ball:"))])
+            for ball in balls:
+                print(f"{ball} {species}")
 
 if __name__ == "__main__":
     main()

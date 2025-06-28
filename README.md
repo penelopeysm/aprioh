@@ -5,9 +5,10 @@
 usage:
 
 ```bash
+<<<<<<< HEAD
 brew install pipx  # if needed
 
-pipx install .
+pipx install -e .
 oh -h
 ```
 
